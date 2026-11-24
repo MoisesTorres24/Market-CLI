@@ -3,6 +3,8 @@ package org.marketcli.modelo.inventario;
 import org.marketcli.util.excepcion.StockInsuficienteException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +18,10 @@ public final class Inventario implements InventarioParaVenta {
     protected final Map<Integer, Producto> productos;
     protected final Map<Integer, Proveedor> proveedores;
     protected final Map<Integer, BigDecimal> existencias;
+    protected final List<EntradaMercancia> entradas;
     protected int siguienteSku;
     protected int siguienteProveedorId;
+    protected int siguienteEntradaId;
 
     /**
      * Crea un inventario vacío.
@@ -26,8 +30,10 @@ public final class Inventario implements InventarioParaVenta {
         this.productos = new LinkedHashMap<>();
         this.proveedores = new LinkedHashMap<>();
         this.existencias = new LinkedHashMap<>();
+        this.entradas = new ArrayList<>();
         this.siguienteSku = 1;
         this.siguienteProveedorId = 1;
+        this.siguienteEntradaId = 1;
     }
 
     /**
@@ -160,6 +166,43 @@ public final class Inventario implements InventarioParaVenta {
      */
     public void darDeBajaProveedor(int proveedorId) {
         consultarProveedor(proveedorId).darDeBaja();
+    }
+
+    /**
+     * Registra la recepción de mercancía de un proveedor y suma la cantidad al saldo del producto.
+     * Un rechazo no cambia ni el saldo ni el historial.
+     *
+     * @param sku identificador del producto recibido
+     * @param proveedorId identificador del proveedor que entrega
+     * @param cantidad cantidad recibida en la medida del producto
+     * @return la entrada registrada
+     * @throws IllegalArgumentException si el producto o el proveedor no existen o están inactivos,
+     *                                  o si la cantidad es inválida
+     */
+    public EntradaMercancia registrarEntrada(int sku, int proveedorId, BigDecimal cantidad) {
+        Producto producto = consultarProductoActivo(sku);
+        Proveedor proveedor = consultarProveedor(proveedorId);
+        if (!proveedor.isActivo()) {
+            throw new IllegalArgumentException(
+                    "El proveedor con id %d está inactivo.".formatted(proveedorId));
+        }
+        producto.validarCantidad(cantidad);
+
+        EntradaMercancia entrada = new EntradaMercancia(
+                siguienteEntradaId, LocalDateTime.now(), producto, proveedor, cantidad);
+        existencias.put(sku, existencias.get(sku).add(cantidad));
+        entradas.add(entrada);
+        siguienteEntradaId++;
+        return entrada;
+    }
+
+    /**
+     * Lista el historial de entradas en el orden en que se registraron.
+     *
+     * @return una copia no modificable del historial de entradas
+     */
+    public List<EntradaMercancia> listarEntradas() {
+        return List.copyOf(entradas);
     }
 
     /**
