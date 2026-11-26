@@ -53,6 +53,29 @@ class DialogoInventarioTest {
     }
 
     @Test
+    void muestraPrecioUnitarioSinRedondearlo() {
+        ControladorInventario controlador = new ControladorInventario(new Inventario());
+        int sku = controlador.registrarProducto("Jabón", TipoMedida.UNIDAD, new BigDecimal("1.234")).getSku();
+        PrintStream salidaOriginal = System.out;
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+
+        try (Scanner scanner = new Scanner(Integer.toString(sku));
+             PrintStream consola = new PrintStream(salida, true, StandardCharsets.UTF_8)) {
+            System.setOut(consola);
+            DialogoInventario dialogo = new DialogoInventario(new LectorConsola(scanner), controlador);
+
+            dialogo.consultarPrecioYExistencias();
+            dialogo.consultarProductos();
+        } finally {
+            System.setOut(salidaOriginal);
+        }
+
+        String texto = salida.toString(StandardCharsets.UTF_8);
+        assertTrue(texto.lines().anyMatch("Precio: $1.234"::equals));
+        assertTrue(texto.contains("| $1.234 |"));
+    }
+
+    @Test
     void muestraDatosOriginalesDeEntrada() {
         ControladorInventario controlador = new ControladorInventario(new Inventario());
         int sku = controlador.registrarProducto("Frijol", TipoMedida.KILOGRAMO, new BigDecimal("20.04")).getSku();
