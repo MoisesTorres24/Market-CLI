@@ -8,7 +8,6 @@ import org.marketcli.modelo.inventario.TipoMedida;
 import org.marketcli.util.lectura.LectorConsola;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -226,7 +225,9 @@ public final class DialogoInventario {
     }
 
     private static String formatearPrecio(BigDecimal precio) {
-        return "$" + precio.setScale(2, RoundingMode.HALF_UP).toPlainString();
+        BigDecimal precioVisible = precio.stripTrailingZeros();
+        int decimales = Math.max(2, precioVisible.scale());
+        return "$" + precioVisible.setScale(decimales).toPlainString();
     }
 
     private static String formatearExistencias(BigDecimal existencias) {
